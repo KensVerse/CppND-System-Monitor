@@ -19,7 +19,7 @@ int Process::Pid() {
 
 // TODO: Return this process's CPU utilization
 float Process::CpuUtilization() const {
-  return float(LinuxParser::ActiveJiffies(pid_nr)) / float(sysconf(_SC_CLK_TCK)) / float(LinuxParser::TimeElapsed(pid_nr));
+  return float(LinuxParser::ActiveJiffies(pid_nr)) / float(sysconf(_SC_CLK_TCK)) / float(LinuxParser::UpTime(pid_nr));
 }
 
 // TODO: Return the command that generated this process

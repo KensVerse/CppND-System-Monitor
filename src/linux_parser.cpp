@@ -76,8 +76,6 @@ float LinuxParser::MemoryUtilization() {
   float memTotalF;
   string memFree;
   float memFreeF;
-//   string memBuffers;
-//   float memBuffersF;
   std::ifstream filestream(kProcDirectory + kMeminfoFilename);
   if (filestream.is_open()){
     std::getline(filestream, line);
@@ -103,22 +101,7 @@ float LinuxParser::MemoryUtilization() {
     {
       memFreeF = 0;
     }
-
-//     std::getline(filestream, line);
-
-//     std::getline(filestream, line);
-//     std::istringstream linestream2(line);
-//     linestream2 >> buffers >> memBuffers;
-//     try
-//     {
-//       memBuffersF = stof(memBuffers);
-//     }
-//     catch(...)
-//     {
-//       memBuffersF = 0;
-//     }
   }
-  // Memory Utilization = 1.0 - (free_memory / (total_memory - buffers))
   return 1.0 - memFreeF / memTotalF;
 }
 
@@ -184,28 +167,6 @@ long LinuxParser::ActiveJiffies(int pid) {
   return activeJ;
 }
 
-long LinuxParser::TimeElapsed(int pid) {
-  string line, nth;
-  long piduptime = UpTime(pid);
-  long systemuptime{0};
-  std::ifstream filestream(kProcDirectory + to_string(pid) + kStatFilename);
-  if (filestream.is_open()){
-    std::getline(filestream, line);
-    std::istringstream linestream(line);
-    linestream >> nth;
-    try
-    {
-      systemuptime += stol(nth);
-    }
-    catch(...)
-    {
-      systemuptime += 0;
-    }
-  }
-  return systemuptime - piduptime;
-}
-
-
 // TODO: Read and return the number of active jiffies for the system
 long LinuxParser::ActiveJiffies() {
   string line, nth;
@@ -214,6 +175,7 @@ long LinuxParser::ActiveJiffies() {
   if (filestream.is_open()){
     std::getline(filestream, line);
     std::istringstream linestream(line);
+//     user + nice + system
     for (int i = 0; i < 3; ++i){
       linestream >> nth;
       try
@@ -228,6 +190,7 @@ long LinuxParser::ActiveJiffies() {
     for (int i = 0; i < 2; ++i){
       linestream >> nth;
     }
+//     + irq + softirq + steal
     for (int i = 0; i < 3; ++i){
       linestream >> nth;
       try
@@ -258,6 +221,7 @@ long LinuxParser::IdleJiffies() {
     for (int i = 0; i < 4; ++i){
       linestream >> nth;
     }
+//     idle + iowait
     try
     {
       idle = stol(nth);
@@ -281,18 +245,18 @@ long LinuxParser::IdleJiffies() {
 
 // TODO: Read and return CPU utilization
 float LinuxParser::CpuUtilization() {
-//   long previdle = IdleJiffies();
-//   long prevactive = ActiveJiffies();
-//   long prevtotal = previdle + prevactive;
-//   sleep(1);
+//   followed https://stackoverflow.com/questions/23367857/accurate-calculation-of-cpu-usage-given-in-percentage-in-linux
+  long previdle = IdleJiffies();
+  long prevactive = ActiveJiffies();
+  long prevtotal = previdle + prevactive;
+  sleep(2);
   long idle = IdleJiffies();
   long active = ActiveJiffies();
   long total = idle + active;
 
-//   long deltatotal = total - prevtotal;
-//   long deltaidle = idle - previdle;
-//   return (deltatotal - deltaidle) / deltatotal;
-  return (total - idle) / total;
+  long deltatotal = total - prevtotal;
+  long deltaidle = idle - previdle;
+  return (deltatotal - deltaidle) / deltatotal;
 }
 
 // TODO: Read and return the total number of processes
@@ -424,21 +388,20 @@ string LinuxParser::User(int pid) {
 // REMOVE: [[maybe_unused]] once you define the function
 long LinuxParser::UpTime(int pid) {
   string line, nth;
-//   long up_time, start_time;
-  long start_time;
+  long up_time, start_time;
   std::ifstream filestream(kProcDirectory + to_string(pid) + kStatFilename);
   if (filestream.is_open()){
     std::getline(filestream, line);
     std::istringstream linestream(line);
     linestream >> nth;
-//     try
-//     {
-//       up_time = stol(nth);
-//     }
-//     catch(...)
-//     {
-//       up_time = 0;
-//     }
+    try
+    {
+      up_time = stol(nth);
+    }
+    catch(...)
+    {
+      up_time = 0;
+    }
     for (int i = 0; i < 21; ++i){
       linestream >> nth;
     }
@@ -451,6 +414,5 @@ long LinuxParser::UpTime(int pid) {
       start_time = 0;
     }
   }
-  return start_time / sysconf(_SC_CLK_TCK);
-//   return up_time - start_time / sysconf(_SC_CLK_TCK);
+  return up_time - start_time / sysconf(_SC_CLK_TCK);
 }
